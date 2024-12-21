@@ -1,0 +1,9 @@
+name: server
+
+# specific attributes to this machine
+# batch_size: 512
+batch_size: 1 #in GCP
+num_workers: 0
+
+defaults:
+  - default@paths
