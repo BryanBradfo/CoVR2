@@ -75,7 +75,7 @@ class BLIPCir(nn.Module):
         else:
             with torch.no_grad():
                 ref_img_embs = self.visual_encoder(ref_img)
-
+        print("tar_img_feat:",tar_img_feat.shape)
         # Encode the target image
         tar_img_feat = tar_img_feat.to(device)
         tar_img_feat = F.normalize(tar_img_feat, dim=-1)

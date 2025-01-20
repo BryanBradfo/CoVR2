@@ -75,49 +75,7 @@ def evaluate(model, data_loader, fabric):
 
         # Encode the target image
         tar_img_feats.append(tar_feat.cpu())
-        ##########################
-        encoder_input_ids = text_tokens.input_ids.clone()
-        
-        ######## added code
 
-        text_feat = self.text_encoder_only(
-            encoder_input_ids,
-            attention_mask=text_tokens.attention_mask,
-            return_dict=True,
-            mode="text",
-        )
-        text_feat = text_feat.last_hidden_state[:, 0, :]
-        text_feat = F.normalize(model.text_proj(text_feat), dim=-1)
-
-
-        img_feat_2d = F.normalize(model.vision_proj_(ref_img_embs.mean(dim=1)), dim=-1)
-        concatenated_feats = torch.cat(
-            (query_feats.unsqueeze(1), img_feat_2d.unsqueeze(1), text_feat.unsqueeze(1)),
-            dim=1,
-        )
-        #concatenated_feats=torch.cat(
-         #       (query_si_feat.unsqueeze(1), text_feat.unsqueeze(1)),
-          #      dim=1,
-        #)
-        combined_query_feat = concatenated_feats.view(concatenated_feats.size(0), -1)
-
-        weights = model.mlp(combined_query_feat)
-        query_feats = (
-            weights[:, 0].unsqueeze(1) * query_feats
-            + weights[:, 1].unsqueeze(1) * img_feat_2d
-            + weights[:, 2].unsqueeze(1) * text_feat
-        )
-
-
-
-
-
-
-
-
-
-
-    ##############################
     query_feats = torch.cat(query_feats, dim=0)
     tar_img_feats = torch.cat(tar_img_feats, dim=0)
 

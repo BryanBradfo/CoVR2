@@ -22,15 +22,8 @@ class TestCirr:
 
         fabric.print("Computing features for test...")
         start_time = time.time()
-        ###########
 
-        # img_feat_2ds=[]
-        # text_feats=[]
-        weights_feats=[]
-        query_feats = []
-
-        ############
-        # vl_feats = []
+        vl_feats = []
         pair_ids = []
         for batch in data_loader:
             ref_img = batch["ref_img"]
@@ -72,67 +65,18 @@ class TestCirr:
 
             vl_embs = output.last_hidden_state[:, : query_tokens.size(1), :]
             vl_feat = F.normalize(model.text_proj(vl_embs), dim=-1)
-            # vl_feats.append(vl_feat.cpu())
-            
-            #########
-            query_si_feat = vl_feat.mean(dim=1)
-            encoder_input_ids=text_tokens.input_ids.clone()
-            text_feat= model.text_encoder_only(
-                    encoder_input_ids,
-                    attention_mask=text_tokens.attention_mask,
-                    return_dict=True,
-                    mode="text",
-                    )
-            text_feat = text_feat.last_hidden_state[:, 0, :]
-            text_feat = F.normalize(model.text_proj(text_feat), dim=-1)
-            img_feat_2d=F.normalize(model.vision_proj_(ref_img_embs.mean(dim=1)),dim=-1)
+            vl_feats.append(vl_feat.cpu())
 
-            concatenated_feats=torch.cat(
-                    (
-                        query_si_feat.unsqueeze(1), img_feat_2d.unsqueeze(1), text_feat.unsqueeze(1)),dim=1,
-                    )
-            combined_query_feat = concatenated_feats.view(concatenated_feats.size(0), -1)
-            weights = model.mlp(combined_query_feat)
-
-            query_feat_multi =(weights[:, 0].unsqueeze(1) * query_si_feat + weights[:, 1].unsqueeze(1) * img_feat_2d + weights[:, 2].unsqueeze(1) * text_feat )
-
-            weights_feats.append(weights.detach().cpu())
-            query_feats.append(query_feat_multi.cpu())
-            
-            # img_feat_2ds.append(img_feat_2d.cpu())
-            # text_feats.append(text_feat.cpu())
-
-                
-
-            
-
-        ##########
         pair_ids = torch.tensor(pair_ids, dtype=torch.long)
-        
-        # vl_feats = torch.cat(vl_feats, dim=0)
-        ###########
-        weights_feats = torch.cat(weights_feats, dim=0)
+        vl_feats = torch.cat(vl_feats, dim=0)
 
-        query_feats = torch.cat(query_feats, dim=0)
-        # img_feat_2ds = torch.cat(img_feat_2ds, dim=0)
-        # text_feats = torch.cat(text_feats, dim=0)
-        np.save("/home/ilyasser6/CoVR2/outputs/weight.npy", weights_feats.numpy())
-        ###########
-        # vl_feats = concat_all_gather(vl_feats, fabric)
+        vl_feats = concat_all_gather(vl_feats, fabric)
         pair_ids = concat_all_gather(pair_ids, fabric)
-        query_feats = concat_all_gather(query_feats, fabric)
-        # img_feat_2ds = concat_all_gather(img_feat_2ds, fabric)
-        # text_feats = concat_all_gather(text_feats, fabric)
-       # np.save(".Composed-Image-Retrieval/outputs/weight.npy", weights_feats.numpy())
 
         if fabric.global_rank == 0:
-            #######
-            pair_ids_np = pair_ids.cpu().numpy()
-            ########
             pair_ids = pair_ids.cpu().numpy().tolist()
-            
-            
-            # assert len(vl_feats) == len(pair_ids)
+
+            assert len(vl_feats) == len(pair_ids)
             img_ids = [data_loader.dataset.pairid2ref[pair_id] for pair_id in pair_ids]
             assert len(img_ids) == len(pair_ids)
 
@@ -145,54 +89,19 @@ class TestCirr:
                     id2emb[img_id] = tar_emb
 
             tar_feats = torch.stack(list(id2emb.values()), dim=0).to("cpu")
-            query_feats = query_feats.to("cpu")
-            query_feats=query_feats.unsqueeze(1)
-            #####################################
+            vl_feats = vl_feats.to("cpu")
 
-            
-            #sims_img_feat_2ds = img_feat_2ds @ tar_feats.T
-            #sims_text_feats = text_feats @ tar_feats.T
-            #np.save(".Composed-Image-Retrieval/outputs/pair_ids_np.npy", pair_ids_np)
-            #np.save(
-            #    ".Composed-Image-Retrieval/outputs/tar_feats.npy", tar_feats.numpy()
-            #)
-            #np.save(".Composed-Image-Retrieval/outputs/sims_q2t.npy", sims_q2t.numpy())
-            #np.save(
-            #    ".Composed-Image-Retrieval/outputs/sims_query_feats_before.npy",
-            #vl_feats.numpy(),
-            #)
-            #np.save(
-            #    ".Composed-Image-Retrieval/outputs/sims_img_feat_2ds.npy",
-
-            #    sims_img_feat_2ds.numpy(),
-            #)
-            #np.save(
-            #    ".Composed-Image-Retrieval/outputs/sims_text_feats.npy",
-            #    sims_text_feats.numpy(),
-            #)
-
-            #############
             # tar_feats = tar_feats.unsqueeze(1)  # Ajout de cette ligne
 
 
             # sims_q2t = torch.einsum("iqe,jke->ijqk", vl_feats, tar_feats)
             # Process in batches to avoid memory issues
-            batch_size = 8
+            batch_size = 100
             sims_q2t = []
-            
-#################
-            #for i in range(0, vl_feats.size(0), batch_size):
-            #   vl_feats_batch = vl_feats[i : i + batch_size]
-            #    sim_batch = torch.einsum("iqe,jke->ijqk", vl_feats_batch, tar_feats)
-            #    sims_q2t.append(sim_batch
-
-            for i in range(0, query_feats.size(0), batch_size):
-                print(i)
-                vl_feats_batch = query_feats[i : i + batch_size]
+            for i in range(0, vl_feats.size(0), batch_size):
+                vl_feats_batch = vl_feats[i : i + batch_size]
                 sim_batch = torch.einsum("iqe,jke->ijqk", vl_feats_batch, tar_feats)
                 sims_q2t.append(sim_batch)
-
-            #)
             sims_q2t = torch.cat(sims_q2t, dim=0)
 
             sims_q2t = sims_q2t.max(dim=-1)[0]

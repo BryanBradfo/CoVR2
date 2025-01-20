@@ -1,6 +1,6 @@
 default_root_dir: ${paths.output_dir}
 
-max_epochs: 5
+max_epochs: 1
 
 accelerator: gpu
 devices: 1

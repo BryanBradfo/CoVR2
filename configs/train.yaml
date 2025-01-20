@@ -23,7 +23,7 @@ defaults:
   - model/optimizer: adamw
   - model/scheduler: cosine
   - model/loss: hn_nce
-  - model/ckpt: blip-l-coco
+  - model/ckpt: blip-l-coco_coir
   - model/loss_terms: si_ti
 
   - experiment: null

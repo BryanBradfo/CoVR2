@@ -4,7 +4,7 @@ defaults:
   - override /data: cirr.yaml
   - override /test: cirr.yaml
   - override /model: blip2-coco.yaml
-  - override /model/ckpt: blip2-l-coco.yaml
+  - override /model/ckpt: blip2-l-coco_coir.yaml
   - override /model/loss_terms: si_ti
 
 model:
@@ -13,7 +13,7 @@ model:
 
 trainer:
   # max_epochs: 6
-max_epochs: 1
+  max_epochs: 2
 
 val: False
 run_name: base

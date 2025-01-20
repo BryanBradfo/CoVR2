@@ -72,16 +72,16 @@ def main(cfg: DictConfig):
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     fabric.print(f"Training time {total_time_str}")
 
-    for dataset in cfg.test:
-        columns = shutil.get_terminal_size().columns
-        fabric.print("-" * columns)
-        fabric.print(f"Testing on {cfg.test[dataset].dataname}".center(columns))
+   # for dataset in cfg.test:
+   #     columns = shutil.get_terminal_size().columns
+   #     fabric.print("-" * columns)
+   #     fabric.print(f"Testing on {cfg.test[dataset].dataname}".center(columns))
 
-        data = instantiate(cfg.test[dataset])
-        test_loader = fabric.setup_dataloaders(data.test_dataloader())
+    #    data = instantiate(cfg.test[dataset])
+    #    test_loader = fabric.setup_dataloaders(data.test_dataloader())
 
-        test = instantiate(cfg.test[dataset].test)
-        test(model, test_loader, fabric=fabric)
+     #   test = instantiate(cfg.test[dataset].test)
+     #   test(model, test_loader, fabric=fabric)
 
     fabric.logger.finalize("success")
     fabric.print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))

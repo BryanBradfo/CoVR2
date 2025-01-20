@@ -91,7 +91,8 @@ class BLIP2Cir(Blip2Base):
         print("Qformer after", self.Qformer.config.hidden_size)
         print("embed_dim",embed_dim )
         self.vision_proj = nn.Linear(self.Qformer.config.hidden_size, embed_dim)
-        #self.vision_proj = nn.Linear(1408, embed_dim)
+        
+        self.vision_proj_ = nn.Linear(vision_width, embed_dim)
         self.text_proj = nn.Linear(self.Qformer.config.hidden_size, embed_dim)
 
         ###added code
@@ -207,7 +208,7 @@ class BLIP2Cir(Blip2Base):
         #print("query_si_feat:",query_si_feat.shape) 
         print("ref_img_embs.mean(dim=1):",ref_img_embs.mean(dim=1).shape)
         ######## added code
-        img_feat_2d = F.normalize(self.vision_proj(ref_img_embs.mean(dim=1)), dim=-1)
+        img_feat_2d = F.normalize(self.vision_proj_(ref_img_embs.mean(dim=1)), dim=-1)
         concatenated_feats = torch.cat(
             (query_si_feat.unsqueeze(1), img_feat_2d.unsqueeze(1), text_feat.unsqueeze(1)),
             dim=1,
@@ -219,10 +220,10 @@ class BLIP2Cir(Blip2Base):
         combined_query_feat = concatenated_feats.view(concatenated_feats.size(0), -1)
         
         weights = self.mlp(combined_query_feat)
-        query_si_feat = (
-            weights[:, 0].unsqueeze(1) * query_si_feat
+        query_si_feat_ = (
+        weights[:, 0].unsqueeze(1) * query_si_feat
             + weights[:, 1].unsqueeze(1) * img_feat_2d
-            + weights[:, 2].unsqueeze(1) * text_feat
+            + weights[:, 2].unsqueeze(1) *text_feat
         )
 
 
@@ -232,8 +233,13 @@ class BLIP2Cir(Blip2Base):
         # s=source, t=target, i=image, c=caption, w=weight
         loss = 0
         if self.si_ti_weight > 0:
-            si_ti_loss = self.loss(query_si_feat, tar_img_feat, self.temp)
-            loss += si_ti_loss * self.si_ti_weight
+            si_ti_loss = self.loss(query_si_feat_, tar_img_feat, self.temp)
+            si_text_loss = self.loss(query_si_feat, text_feat , self.temp)
+            si_img_loss = self.loss(query_si_feat, img_feat_2d, self.temp)
+
+            loss +=1/2* si_ti_loss * self.si_ti_weight +1/4* si_text_loss +1/4* si_img_loss
+            #si_ti_loss = self.loss(query_si_feat, tar_img_feat, self.temp)
+            #loss += si_ti_loss * self.si_ti_weight
 
         if self.si_tc_weight > 0:
             assert "tar_txt_feat" in batch, "tar_txt_feat is not in batch"
